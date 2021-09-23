@@ -9,6 +9,8 @@ scpaste plugin for Neovim based on [scpaste.el][] by Phil Hagelberg.
 Use `:Scpaste` in a buffer. The command also accepts a range, so you can select
 a region in visual mode and use `:Scpaste` to only paste the selection.
 
+You can also create a mapping to `<Plug>(scpaste)`.
+
 ## Configuration
 
 **`g:scpaste_http_destination`**
@@ -25,13 +27,15 @@ SSH-accessible directory to which HTML files will be copied to. Example:
 
 Command to use for copying HTML files to the server. Defaults to `scp`.
 
-**`g:scpaste_colors`**
+**`g:scpaste_highlight`**
 
-Colorscheme to use for pastes. If omitted, use the colorscheme defined in
-`g:colors_name`.
+Command to use to create HTML from source file. Default is `highlight
+--inline-css -O html`. The command should accept the source file on stdin and
+emit the output on stdout.
 
-All other configuration is done through the `tohtml` builtin plugin. See `:h
-:TOhtml`.
+**`g:scpaste_extension`**
+
+Extension to use for output files. Defaults to `html`.
 
 ## License
 
