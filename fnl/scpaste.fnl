@@ -1,9 +1,8 @@
 (fn make-name [bufnr]
   (let [fname (vim.api.nvim_buf_get_name bufnr)
-        stem (vim.fn.fnamemodify fname ":t")
-        ext (or vim.g.scpaste_extension :html)
-        default (.. stem "." ext)
+        default (vim.fn.fnamemodify fname ":t")
         input (vim.fn.input "Name: " default :file)]
+    (vim.api.nvim_command :mode)
     input))
 
 (fn make-footer []
@@ -33,23 +32,27 @@
                 (table.insert data (make-footer))
                 (with-open [f (io.open tmp :w)]
                   (f:write (table.concat data "\n")))
-                (scp tmp name)))
+                (scp tmp (.. name "." (or vim.g.scpaste_extension :html)))))
     :stderr (vim.notify (table.concat data "\n") vim.log.levels.ERROR)))
 
-(fn scpaste [?start ?end ?opts]
+(fn scpaste [?start ?end]
   (let [bufnr (vim.api.nvim_get_current_buf)
-        name (make-name bufnr (?. ?opts :suffix))
-        start (or ?start 1)
-        end (or ?end (vim.api.nvim_buf_line_count bufnr))
-        lines (vim.api.nvim_buf_get_lines bufnr (- start 1) end true)
-        ft vim.bo.filetype
-        highlight-cmd (or vim.g.scpaste_highlight "highlight --inline-css")
-        highlight-args (.. " -T " name " -S " ft)
-        cb #(callback name $2 $3)
-        opts {:stdout_buffered true
-              :stderr_buffered true
-              :on_stdout cb
-              :on_stderr cb}
-        job (vim.fn.jobstart (.. highlight-cmd highlight-args) opts)]
-    (vim.fn.chansend job lines)
-    (vim.fn.chanclose job :stdin)))
+        name (make-name bufnr)]
+    (if (= name "")
+        (vim.notify "Name must not be blank" vim.log.levels.ERROR)
+        (let [start (or ?start 1)
+              end (or ?end (vim.api.nvim_buf_line_count bufnr))
+              lines (vim.api.nvim_buf_get_lines bufnr (- start 1) end true)
+              ft (match vim.bo.filetype
+                   "" :none
+                   ft ft)
+              highlight-cmd (or vim.g.scpaste_highlight "highlight -I")
+              highlight-args (.. " -T " name " -S " ft)
+              cb #(callback name $2 $3)
+              opts {:stdout_buffered true
+                    :stderr_buffered true
+                    :on_stdout cb
+                    :on_stderr cb}
+              job (vim.fn.jobstart (.. highlight-cmd highlight-args) opts)]
+          (vim.fn.chansend job lines)
+          (vim.fn.chanclose job :stdin)))))

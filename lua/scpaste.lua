@@ -1,8 +1,8 @@
-local function make_name(bufnr, _3fsuffix)
+local function make_name(bufnr)
   local fname = vim.api.nvim_buf_get_name(bufnr)
-  local stem = vim.fn.fnamemodify(fname, ":t")
-  local default = (stem .. (_3fsuffix or "") .. ".html")
+  local default = vim.fn.fnamemodify(fname, ":t")
   local input = vim.fn.input("Name: ", default, "file")
+  vim.api.nvim_command("mode")
   return input
 end
 local function make_footer()
@@ -52,37 +52,44 @@ local function callback(name, data, type)
         end
         close_handlers_7_auto(xpcall(_6_, (package.loaded.fennel or debug).traceback))
       end
-      return scp(tmp, name)
+      return scp(tmp, (name .. "." .. (vim.g.scpaste_extension or "html")))
     end
   elseif (_4_ == "stderr") then
     return vim.notify(table.concat(data, "\n"), vim.log.levels.ERROR)
   end
 end
-local function scpaste(_3fstart, _3fend, _3fopts)
+local function scpaste(_3fstart, _3fend)
   local bufnr = vim.api.nvim_get_current_buf()
-  local name
-  local function _10_()
-    local t_9_ = _3fopts
-    if (nil ~= t_9_) then
-      t_9_ = (t_9_).suffix
+  local name = make_name(bufnr)
+  if (name == "") then
+    return vim.notify("Name must not be blank", vim.log.levels.ERROR)
+  else
+    local start = (_3fstart or 1)
+    local _end = (_3fend or vim.api.nvim_buf_line_count(bufnr))
+    local lines = vim.api.nvim_buf_get_lines(bufnr, (start - 1), _end, true)
+    local ft
+    do
+      local _9_ = vim.bo.filetype
+      if (_9_ == "") then
+        ft = "none"
+      elseif (nil ~= _9_) then
+        local ft0 = _9_
+        ft = ft0
+      else
+      ft = nil
+      end
     end
-    return t_9_
+    local highlight_cmd = (vim.g.scpaste_highlight or "highlight -I")
+    local highlight_args = (" -T " .. name .. " -S " .. ft)
+    local cb
+    local function _11_(_241, _242, _243)
+      return callback(name, _242, _243)
+    end
+    cb = _11_
+    local opts = {on_stderr = cb, on_stdout = cb, stderr_buffered = true, stdout_buffered = true}
+    local job = vim.fn.jobstart((highlight_cmd .. highlight_args), opts)
+    vim.fn.chansend(job, lines)
+    return vim.fn.chanclose(job, "stdin")
   end
-  name = make_name(bufnr, _10_())
-  local start = (_3fstart or 1)
-  local _end = (_3fend or vim.api.nvim_buf_line_count(bufnr))
-  local lines = vim.api.nvim_buf_get_lines(bufnr, (start - 1), _end, true)
-  local ft = vim.bo.filetype
-  local highlight_cmd = (vim.g.scpaste_highlight or "highlight --inline-css")
-  local highlight_args = (" -T " .. name .. " -S " .. ft)
-  local cb
-  local function _12_(_241, _242, _243)
-    return callback(name, _242, _243)
-  end
-  cb = _12_
-  local opts = {on_stderr = cb, on_stdout = cb, stderr_buffered = true, stdout_buffered = true}
-  local job = vim.fn.jobstart((highlight_cmd .. highlight_args), opts)
-  vim.fn.chansend(job, lines)
-  return vim.fn.chanclose(job, "stdin")
 end
 return scpaste
